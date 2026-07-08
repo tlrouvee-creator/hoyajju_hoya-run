@@ -26,7 +26,7 @@ let spawnTimer = 0;
 let nextSpawnInterval = 80; 
 const GROUND_Y = 800; 
 
-// ★ [수정] 구름 랜덤 간격을 제어하기 위한 독립 타이머 변수 추가
+// ★ 구름 전용 타이머 변수 완벽하게 독립 분리 완료!
 let cloudTimer = 0;
 let nextCloudInterval = 200; 
 
@@ -110,7 +110,6 @@ const character = {
 class Cloud {
     constructor() {
         this.x = canvas.width + Math.random() * 300; 
-        // ★ [수정] 구름 높이를 하향 조정 (200px ~ 550px 사이의 화면 중간 영역에서 젠)
         this.y = 200 + Math.random() * 350;           
         this.width = 180;                            
         this.height = 105;                           
@@ -138,3 +137,5 @@ class Obstacle {
         if (this.type === 'rock') { this.width = 80; this.height = 80; }
         else if (this.type === 'drawer') { this.width = 70; this.height = 120; }
         else if (this.type === 'pot') { this.width = 60; this.height = 90; }
+        else if (this.type === 'flower') { this.width = 50; this.height = 100; }
+        this.y = GROUND_Y -
