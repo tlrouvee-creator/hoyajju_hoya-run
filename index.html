@@ -29,6 +29,10 @@ const GROUND_Y = 800;
 let cloudTimer = 0;
 let nextCloudInterval = 200;
 let glowTimer = 0;
+  
+  // ★ [추가] 무한 루프 배경 스크롤용 실시간 X좌표 변수
+let groundX = 0; 
+let groundSpeed = 5; // 배경이 뒤로 흘러가는 속도! (장애물 속도랑 맞춰서 조절 가능)
 
 // ★ [수정] 쮸 달빛 깜빡임 제어용 변수들 추가
 let jjuBlinkTimer = 0;
@@ -36,15 +40,17 @@ let isJjuBlinking = false;
 let nextBlinkInterval = 60; // 약 3초 뒤에 첫 깜빡임
 
 const IMAGES_SRC = {
+    bg: 'https://github.com/tlrouvee-creator/hoyajju_hoya-run/blob/main/bg.png?raw=true', // ★ 
+  
     character: 'https://github.com/tlrouvee-creator/hoyajju_hoya-run/blob/main/hoya_run.png?raw=true', 
-    ground: 'ground.png',       
+    ground: 'https://github.com/tlrouvee-creator/hoyajju_hoya-run/blob/main/ground_bg.png?raw=true',       
     moon: 'https://github.com/tlrouvee-creator/hoyajju_hoya-run/blob/main/jju.png?raw=true',           
     moon_blink: 'https://github.com/tlrouvee-creator/hoyajju_hoya-run/blob/main/jju_blink.png?raw=true', // ★ 눈감은 쮸 이미지 경로 추가!
-    cloud: 'cloud.png',         
-    rock: 'rock.png',           
-    drawer: 'drawer.png',       
-    pot: 'pot.png',             
-    flower: 'flower.png'        
+    cloud: 'https://github.com/tlrouvee-creator/hoyajju_hoya-run/blob/main/cloud_1.png?raw=true',         
+    rock: 'https://github.com/tlrouvee-creator/hoyajju_hoya-run/blob/main/ob_rock.png?raw=true',           
+    drawer: 'https://github.com/tlrouvee-creator/hoyajju_hoya-run/blob/main/ob_pot.png?raw=true',       
+    pot: 'https://github.com/tlrouvee-creator/hoyajju_hoya-run/blob/main/ob_mush.png?raw=true',             
+    flower: 'https://github.com/tlrouvee-creator/hoyajju_hoya-run/blob/main/ob_flower.png?raw=true'        
 };
 
 const images = {};
@@ -63,10 +69,10 @@ try {
 const character = {
 x: 50,               
     y: GROUND_Y - 288,    // 크기 상향에 맞춰 리젠 높이 자동 연동 (240 -> 288)
-    width: 264,           // 기존 220에서 120% 키운 264!
-    height: 288,          // 기존 240에서 120% 키운 288!
+    width: 300,           // 기존 220에서 120% 키운 264!
+    height: 327,          // 기존 240에서 120% 키운 288!
     gravity: 1.0,         // 덩치에 맞는 묵직한 중력 보정 (0.9 -> 1.0)
-    jumpForce: -25.5,     // 시원하게 뛰어오르도록 점프력 대폭 버프 (-23 -> -25.5)
+    jumpForce: -24,     // 시원하게 뛰어오르도록 점프력 대폭 버프 (-23 -> -25.5)
     velocityY: 0,
     isJumping: false,
     frameCount: 6,        
@@ -116,16 +122,39 @@ x: 50,
 class Cloud {
     constructor() {
         this.x = canvas.width + Math.random() * 300; 
-        this.y = 50 + Math.random() * 280;           
-        this.width = 180;                            
-        this.height = 105;                           
+        this.y = 50 + Math.random() * 600;           
+
+        // ========================================================
+        // ★ [수정] 구름 가로/세로 크기 자체 랜덤 연산 시스템 ★
+        // ========================================================
+        
+        // 1. 기본 비율 (1.7:1) 유지하면서 랜덤한 배율(0.7배 ~ 1.5배)을 뽑음!
+        let cloudScale = 0.7 + Math.random() * 2.0; 
+        
+        // 2. 뽑은 랜덤 배율을 기본 크기에 곱해서 매번 다른 사이즈의 구름 탄생!
+        this.width = 180 * cloudScale;   // 기존 180 비율 베이스
+        this.height = 127 * cloudScale;  // 기존 105 비율 베이스
+
+        // ========================================================
+        // ★ [추가] 구름별 고유 랜덤 투명도(0.15 ~ 0.55) 부여 시스템 ★
+        // ========================================================
+        this.opacity = 0.15 + Math.random() * 0.4; 
+
+        this.speed = gameSpeed * 0.3;
+
         this.speed = gameSpeed * 0.3;
     }
     update() { this.x -= this.speed; }
     draw() {
-        if (imagesLoaded['cloud'] && images.cloud && images.cloud.complete && images.cloud.naturalWidth > 0) {
+      ctx.save();          
+        
+        // ★ [수정] 고정 숫자 0.4 대신, 구름이 가진 고유 랜덤 투명도로 매핑!
+        ctx.globalAlpha = this.opacity; 
+
+        if (imagesLoaded['cloud'] && images.cloud && images.cloud.complete) {
             try {
                 ctx.drawImage(images.cloud, this.x, this.y, this.width, this.height);
+                ctx.restore(); 
                 return;
             } catch(e){}
         }
@@ -140,17 +169,25 @@ class Obstacle {
     constructor() {
         this.x = canvas.width;
         this.type = OBSTACLE_TYPES[Math.floor(Math.random() * OBSTACLE_TYPES.length)];
-        if (this.type === 'rock') { this.width = 80; this.height = 80; }
-        else if (this.type === 'drawer') { this.width = 70; this.height = 120; }
-        else if (this.type === 'pot') { this.width = 60; this.height = 90; }
-        else if (this.type === 'flower') { this.width = 50; this.height = 100; }
+        if (this.type === 'rock') { this.width = 80; this.height = 66; }
+        else if (this.type === 'drawer') { this.width = 70; this.height = 136; }
+        else if (this.type === 'pot') { this.width = 60; this.height = 69; }
+        else if (this.type === 'flower') { this.width = 50; this.height = 77; }
         this.y = GROUND_Y - this.height; 
     }
     update() { this.x -= gameSpeed; }
     draw() {
-        if (imagesLoaded[this.type] && images[this.type] && images[this.type].complete && images[this.type].naturalWidth > 0) {
+// ========================================================
+        // ★ [수정] 장애물 시인성 버프! 레드 네온 광선(Glow) 레이어 시스템 ★
+        // ========================================================
+        ctx.save(); 
+        ctx.shadowBlur = 10;                  // 광선이 퍼지는 반경 크기 (더 넓게 퍼지게 하려면 키우기)
+        ctx.shadowColor = "rgba(255, 0, 0, 1)"; // 강렬하고 선명한 레드 컬러 아우라 장착!
+
+        if (imagesLoaded[this.type] && images[this.type] && images[this.type].complete) {
             try {
                 ctx.drawImage(images[this.type], this.x, this.y, this.width, this.height);
+                ctx.restore(); // 이미지 그리고 나서 후광 리셋
                 return;
             } catch(e){}
         }
@@ -170,7 +207,7 @@ function checkCollision(char, obs) {
     let charBoxX = char.x + 70;
     let charBoxY = char.y + 80;
     let charBoxW = 120;
-    let charBoxH = 150;
+    let charBoxH = 200;
 
     let obsBoxX = obs.x + 10;
     let obsBoxY = obs.y + 10;
@@ -192,9 +229,20 @@ window.addEventListener('keydown', (e) => { if(e.code === 'Space') handleJump(e)
 canvas.addEventListener('touchstart', handleJump, { passive: false });
 
 function resetGame() {
-    obstacles = []; clouds = []; score = 0; gameSpeed = 8; isGameOver = false; spawnTimer = 0; nextSpawnInterval = 80;
-    cloudTimer = 0; nextCloudInterval = 200; 
-    jjuBlinkTimer = 0; isJjuBlinking = false; nextBlinkInterval = 180; // 리셋 추가
+obstacles = []; clouds = []; score = 0; gameSpeed = 8; isGameOver = false; spawnTimer = 0; nextSpawnInterval = 80;
+    cloudTimer = 0; 
+    nextCloudInterval = 30; // 첫 구름 대기 시간도 대폭 단축!
+    jjuBlinkTimer = 0; isJjuBlinking = false; nextBlinkInterval = 60; 
+    glowTimer = 0;
+    
+    // ★ [추가] 시작하자마자 화면 여기저기에 구름 3개 미리 깔아두기!
+    for(let i = 0; i < 2; i++) {
+        let presetCloud = new Cloud();
+        // 화면 밖이 아니라 인게임 화면 안(X좌표 200~800 사이)에 무작위 배치
+        presetCloud.x = 200 + Math.random() * 600; 
+        clouds.push(presetCloud);
+    }
+
     character.y = GROUND_Y - character.height;
     animate();
 }
@@ -215,13 +263,28 @@ function animate() {
 
     requestAnimationFrame(animate);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+  
+  // ========================================================
+    // ★ [추가] 1000x1000 통짜 밤하늘 배경 이미지 최하단에 깔기 ★
+    // ========================================================
+    if (imagesLoaded['bg'] && images.bg && images.bg.complete) {
+        try {
+            // (0, 0) 좌표부터 캔버스 꽉 차게 1000x1000 크기로 드로잉!
+            ctx.drawImage(images.bg, 0, 0, 1000, 1000); 
+        } catch(e) {}
+    } else {
+        // 배경 이미지가 아직 안 불려왔을 때는 기존 다크블루 색상으로 임시 메우기
+        ctx.fillStyle = '#1a1a2e';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+    // ========================================================
 
 
     cloudTimer++;
     if (cloudTimer >= nextCloudInterval) {
         clouds.push(new Cloud());
         cloudTimer = 0;
-        nextCloudInterval = 70 + Math.floor(Math.random() * 200); 
+        nextCloudInterval = 100 + Math.floor(Math.random() * 200); 
     }
 
     clouds.forEach((cloud, index) => {
@@ -229,11 +292,21 @@ function animate() {
         if (cloud.x + cloud.width < 0) clouds.splice(index, 1);
     });
 
-    if (imagesLoaded['ground'] && images.ground && images.ground.complete && images.ground.naturalWidth > 0) {
-        try {
-            for (let i = 0; i < canvas.width; i += 100) { 
-                ctx.drawImage(images.ground, i, GROUND_Y, 100, 30); 
+if (imagesLoaded['ground'] && images.ground && images.ground.complete) {
+try {
+            // 1. 매 프레임마다 배경 X좌표를 왼쪽으로 밀어내기
+            if (!isGameOver) {
+                groundX -= groundSpeed;
+                // 배경이 완전히 왼쪽 화면 밖(-1000)으로 나가면 다시 0으로 리셋해서 무한 루프!
+                if (groundX <= -1000) {
+                    groundX = 0;
+                }
             }
+
+            // 2. 끊김 없는 스크롤을 위해 원래 위치(groundX)와 그 바로 오른쪽(groundX + 1000)에 두 장을 이어 붙여서 그림!
+            ctx.drawImage(images.ground, groundX, 604, 1000, 440); 
+            ctx.drawImage(images.ground, groundX + 1000, 604, 1000, 440); 
+
         } catch(e) {
             ctx.strokeStyle = '#444444'; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(0, GROUND_Y); ctx.lineTo(canvas.width, GROUND_Y); ctx.stroke();
         }
@@ -268,13 +341,13 @@ ctx.save();
 
     if (isJjuBlinking && imagesLoaded['moon_blink'] && images.moon_blink.complete) {
         // [수정] Y축 위치 자리에 고정 숫자 대신 방금 만든 jjuY 변수를 쏙 넣어줌!
-        ctx.drawImage(images.moon_blink, canvas.width - 380, jjuY, 280, 280);
+        ctx.drawImage(images.moon_blink, canvas.width - 450, jjuY, 350, 350);
     } else if (imagesLoaded['moon'] && images.moon && images.moon.complete) {
         // [수정] 여기도 jjuY로 교체!
-        ctx.drawImage(images.moon, canvas.width - 380, jjuY, 280, 280);
+        ctx.drawImage(images.moon, canvas.width -450, jjuY, 350, 350);
     } else {
         ctx.fillStyle = '#1a1a2e'; 
-        ctx.fillRect(canvas.width - 380, jjuY, 280, 280);
+        ctx.fillRect(canvas.width - 450, jjuY, 350, 350);
     }
     ctx.restore();
     ctx.restore(); 
