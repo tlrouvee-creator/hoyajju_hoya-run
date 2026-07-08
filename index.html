@@ -26,7 +26,7 @@ let spawnTimer = 0;
 let nextSpawnInterval = 80; 
 const GROUND_Y = 800; 
 
-// ★ 구름 전용 타이머 변수 완벽하게 독립 분리 완료!
+// 구름 독립 시스템 변수
 let cloudTimer = 0;
 let nextCloudInterval = 200; 
 
@@ -110,7 +110,7 @@ const character = {
 class Cloud {
     constructor() {
         this.x = canvas.width + Math.random() * 300; 
-        this.y = 200 + Math.random() * 350;           
+        this.y = 200 + Math.random() * 350; // 구름 영역 대폭 다운 고정
         this.width = 180;                            
         this.height = 105;                           
         this.speed = gameSpeed * 0.3;
@@ -135,7 +135,4 @@ class Obstacle {
         this.x = canvas.width;
         this.type = OBSTACLE_TYPES[Math.floor(Math.random() * OBSTACLE_TYPES.length)];
         if (this.type === 'rock') { this.width = 80; this.height = 80; }
-        else if (this.type === 'drawer') { this.width = 70; this.height = 120; }
-        else if (this.type === 'pot') { this.width = 60; this.height = 90; }
-        else if (this.type === 'flower') { this.width = 50; this.height = 100; }
-        this.y = GROUND_Y -
+        else
