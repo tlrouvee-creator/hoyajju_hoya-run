@@ -27,25 +27,55 @@ let nextSpawnInterval = 80;
 const GROUND_Y = 800; 
 
 let cloudTimer = 0;
-let nextCloudInterval = 200;
+let nextCloudInterval = 30; // 처음부터 빠르게 나오도록 조절
 let glowTimer = 0;
   
-  // ★ [추가] 무한 루프 배경 스크롤용 실시간 X좌표 변수
 let groundX = 0; 
-let groundSpeed = 5; // 배경이 뒤로 흘러가는 속도! (장애물 속도랑 맞춰서 조절 가능)
+let groundSpeed = 5; 
 
-// ★ [수정] 쮸 달빛 깜빡임 제어용 변수들 추가
 let jjuBlinkTimer = 0;
 let isJjuBlinking = false;
-let nextBlinkInterval = 60; // 약 3초 뒤에 첫 깜빡임
+let nextBlinkInterval = 60; 
+
+// ========================================================
+// ★ [복구 완료] 반짝이며 흘러가는 별 시스템 ★
+// ========================================================
+let stars = []; 
+let starSpeed = 1.5; // 배경에 맞게 은은하게 흘러가는 속도
+
+class Star {
+    constructor() {
+        this.x = Math.random() * canvas.width; 
+        this.y = Math.random() * 550;           
+        this.size = 1 + Math.random() * 2;    
+        this.originalSize = this.size;          
+        this.alpha = 0.3 + Math.random() * 0.7; 
+    }
+    update() {
+        if (!isGameOver) {
+            this.x -= starSpeed;
+            if (this.x + this.size < 0) {
+                this.x = canvas.width;
+                this.y = Math.random() * 550; 
+            }
+        }
+    }
+    draw(time) {
+        let currentSize = this.originalSize + Math.sin(time + this.x) * 1.0;
+        if (currentSize < 0.5) currentSize = 0.5;
+        ctx.fillStyle = `rgba(255, 255, 255, ${this.alpha})`; 
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, currentSize, 0, Math.PI * 2);
+        ctx.fill();
+    }
+}
 
 const IMAGES_SRC = {
-    bg: 'https://github.com/tlrouvee-creator/hoyajju_hoya-run/blob/main/bg.png?raw=true', // ★ 
-  
+    bg: 'https://github.com/tlrouvee-creator/hoyajju_hoya-run/blob/main/bg.png?raw=true', 
     character: 'https://github.com/tlrouvee-creator/hoyajju_hoya-run/blob/main/hoya_run.png?raw=true', 
     ground: 'https://github.com/tlrouvee-creator/hoyajju_hoya-run/blob/main/ground_bg.png?raw=true',       
     moon: 'https://github.com/tlrouvee-creator/hoyajju_hoya-run/blob/main/jju.png?raw=true',           
-    moon_blink: 'https://github.com/tlrouvee-creator/hoyajju_hoya-run/blob/main/jju_blink.png?raw=true', // ★ 눈감은 쮸 이미지 경로 추가!
+    moon_blink: 'https://github.com/tlrouvee-creator/hoyajju_hoya-run/blob/main/jju_blink.png?raw=true', 
     cloud: 'https://github.com/tlrouvee-creator/hoyajju_hoya-run/blob/main/cloud_1.png?raw=true',         
     rock: 'https://github.com/tlrouvee-creator/hoyajju_hoya-run/blob/main/ob_rock.png?raw=true',           
     drawer: 'https://github.com/tlrouvee-creator/hoyajju_hoya-run/blob/main/ob_pot.png?raw=true',       
@@ -67,18 +97,18 @@ try {
 } catch(e) {}
 
 const character = {
-x: 50,               
-    y: GROUND_Y - 288,    // 크기 상향에 맞춰 리젠 높이 자동 연동 (240 -> 288)
-    width: 300,           // 기존 220에서 120% 키운 264!
-    height: 327,          // 기존 240에서 120% 키운 288!
-    gravity: 1.0,         // 덩치에 맞는 묵직한 중력 보정 (0.9 -> 1.0)
-    jumpForce: -24,     // 시원하게 뛰어오르도록 점프력 대폭 버프 (-23 -> -25.5)
+    x: 50,               
+    y: GROUND_Y - 327,    
+    width: 300,           
+    height: 327,          
+    gravity: 1.0,         
+    jumpForce: -24,     
     velocityY: 0,
     isJumping: false,
     frameCount: 6,        
     currentFrame: 0,    
     animTimer: 0,       
-    animSpeed: 4,     
+    animSpeed: 4.5 ,     
     
     draw() {
         if (imagesLoaded['character'] && images.character && images.character.complete && images.character.naturalWidth > 0) {
@@ -90,10 +120,8 @@ x: 50,
                 return;
             } catch (e) {}
         }
-        ctx.fillStyle = '#1a1a2e'; 
+        ctx.fillStyle = '#ff007f'; 
         ctx.fillRect(this.x, this.y, this.width, this.height);
-        ctx.fillStyle = '#1a1a2e';
-        ctx.fillRect(this.x + 150, this.y + 50, 32, 32);
     },
     update() {
         this.velocityY += this.gravity;
@@ -122,33 +150,18 @@ x: 50,
 class Cloud {
     constructor() {
         this.x = canvas.width + Math.random() * 300; 
-        this.y = 50 + Math.random() * 600;           
+        this.y = 50 + Math.random() * 400;           
 
-        // ========================================================
-        // ★ [수정] 구름 가로/세로 크기 자체 랜덤 연산 시스템 ★
-        // ========================================================
-        
-        // 1. 기본 비율 (1.7:1) 유지하면서 랜덤한 배율(0.7배 ~ 1.5배)을 뽑음!
-        let cloudScale = 0.7 + Math.random() * 2.0; 
-        
-        // 2. 뽑은 랜덤 배율을 기본 크기에 곱해서 매번 다른 사이즈의 구름 탄생!
-        this.width = 180 * cloudScale;   // 기존 180 비율 베이스
-        this.height = 127 * cloudScale;  // 기존 105 비율 베이스
+        let cloudScale = 0.5 + Math.random() * 2.0; 
+        this.width = 180 * cloudScale;   
+        this.height = 127 * cloudScale;  
 
-        // ========================================================
-        // ★ [추가] 구름별 고유 랜덤 투명도(0.15 ~ 0.55) 부여 시스템 ★
-        // ========================================================
         this.opacity = 0.15 + Math.random() * 0.4; 
-
-        this.speed = gameSpeed * 0.3;
-
         this.speed = gameSpeed * 0.3;
     }
     update() { this.x -= this.speed; }
     draw() {
-      ctx.save();          
-        
-        // ★ [수정] 고정 숫자 0.4 대신, 구름이 가진 고유 랜덤 투명도로 매핑!
+        ctx.save();          
         ctx.globalAlpha = this.opacity; 
 
         if (imagesLoaded['cloud'] && images.cloud && images.cloud.complete) {
@@ -160,6 +173,7 @@ class Cloud {
         }
         ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
         ctx.fillRect(this.x, this.y, this.width, this.height);
+        ctx.restore();
     }
 }
 
@@ -177,17 +191,14 @@ class Obstacle {
     }
     update() { this.x -= gameSpeed; }
     draw() {
-// ========================================================
-        // ★ [수정] 장애물 시인성 버프! 레드 네온 광선(Glow) 레이어 시스템 ★
-        // ========================================================
         ctx.save(); 
-        ctx.shadowBlur = 10;                  // 광선이 퍼지는 반경 크기 (더 넓게 퍼지게 하려면 키우기)
-        ctx.shadowColor = "rgba(255, 0, 0, 1)"; // 강렬하고 선명한 레드 컬러 아우라 장착!
+        ctx.shadowBlur = 15;                  
+        ctx.shadowColor = "rgba(255, 0, 0, 1)"; 
 
         if (imagesLoaded[this.type] && images[this.type] && images[this.type].complete) {
             try {
                 ctx.drawImage(images[this.type], this.x, this.y, this.width, this.height);
-                ctx.restore(); // 이미지 그리고 나서 후광 리셋
+                ctx.restore(); 
                 return;
             } catch(e){}
         }
@@ -196,18 +207,18 @@ class Obstacle {
         else if (this.type === 'pot') ctx.fillStyle = '#d2691e';
         else if (this.type === 'flower') ctx.fillStyle = '#ffa500';
         ctx.fillRect(this.x, this.y, this.width, this.height);
+        ctx.restore();
     }
 }
 
 let obstacles = [];
 let clouds = [];
 
-// 호야가 커진 만큼 충돌 판정 박스도 넉넉하고 안전하게 보정 완료
 function checkCollision(char, obs) {
     let charBoxX = char.x + 70;
     let charBoxY = char.y + 80;
     let charBoxW = 120;
-    let charBoxH = 200;
+    let charBoxH = 220; // 억까 방지 발바닥 히트박스 최적화
 
     let obsBoxX = obs.x + 10;
     let obsBoxY = obs.y + 10;
@@ -229,17 +240,21 @@ window.addEventListener('keydown', (e) => { if(e.code === 'Space') handleJump(e)
 canvas.addEventListener('touchstart', handleJump, { passive: false });
 
 function resetGame() {
-obstacles = []; clouds = []; score = 0; gameSpeed = 8; isGameOver = false; spawnTimer = 0; nextSpawnInterval = 80;
-    cloudTimer = 0; 
-    nextCloudInterval = 30; // 첫 구름 대기 시간도 대폭 단축!
+    obstacles = []; clouds = []; score = 0; gameSpeed = 8; isGameOver = false; spawnTimer = 0; nextSpawnInterval = 80;
+    cloudTimer = 0; nextCloudInterval = 30; 
     jjuBlinkTimer = 0; isJjuBlinking = false; nextBlinkInterval = 60; 
-    glowTimer = 0;
-    
-    // ★ [추가] 시작하자마자 화면 여기저기에 구름 3개 미리 깔아두기!
-    for(let i = 0; i < 2; i++) {
+    glowTimer = 0; groundX = 0; groundSpeed = 5;
+
+    // ★ 시작할 때 하늘에 별 40개 생성
+    stars = [];
+    for(let i = 0; i < 40; i++) {
+        stars.push(new Star());
+    }
+
+    // 시작하자마자 구름 3개 미리 랜덤 배치
+    for(let i = 0; i < 3; i++) {
         let presetCloud = new Cloud();
-        // 화면 밖이 아니라 인게임 화면 안(X좌표 200~800 사이)에 무작위 배치
-        presetCloud.x = 200 + Math.random() * 600; 
+        presetCloud.x = 100 + Math.random() * 700; 
         clouds.push(presetCloud);
     }
 
@@ -264,27 +279,28 @@ function animate() {
     requestAnimationFrame(animate);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
   
-  // ========================================================
-    // ★ [추가] 1000x1000 통짜 밤하늘 배경 이미지 최하단에 깔기 ★
-    // ========================================================
+    // 1. 1000x1000 통짜 밤하늘 배경 이미지 최하단 드로잉
     if (imagesLoaded['bg'] && images.bg && images.bg.complete) {
         try {
-            // (0, 0) 좌표부터 캔버스 꽉 차게 1000x1000 크기로 드로잉!
             ctx.drawImage(images.bg, 0, 0, 1000, 1000); 
         } catch(e) {}
     } else {
-        // 배경 이미지가 아직 안 불려왔을 때는 기존 다크블루 색상으로 임시 메우기
         ctx.fillStyle = '#1a1a2e';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
-    // ========================================================
 
+    // 2. 반짝이는 별 실시간 연산 및 렌더링
+    stars.forEach(star => {
+        star.update(); 
+        star.draw(glowTimer * 8); 
+    });
 
-    cloudTimer++;
+    // 3. 구름 스폰 및 연산 (템포 버프)
+    cloudTimer += 0.7; 
     if (cloudTimer >= nextCloudInterval) {
         clouds.push(new Cloud());
         cloudTimer = 0;
-        nextCloudInterval = 100 + Math.floor(Math.random() * 200); 
+        nextCloudInterval = 60 + Math.floor(Math.random() * 80); 
     }
 
     clouds.forEach((cloud, index) => {
@@ -292,21 +308,17 @@ function animate() {
         if (cloud.x + cloud.width < 0) clouds.splice(index, 1);
     });
 
-if (imagesLoaded['ground'] && images.ground && images.ground.complete) {
-try {
-            // 1. 매 프레임마다 배경 X좌표를 왼쪽으로 밀어내기
+    // 4. 움직이는 풀밭 바닥 레이어 무한 스크롤
+    if (imagesLoaded['ground'] && images.ground && images.ground.complete) {
+        try {
             if (!isGameOver) {
                 groundX -= groundSpeed;
-                // 배경이 완전히 왼쪽 화면 밖(-1000)으로 나가면 다시 0으로 리셋해서 무한 루프!
                 if (groundX <= -1000) {
                     groundX = 0;
                 }
             }
-
-            // 2. 끊김 없는 스크롤을 위해 원래 위치(groundX)와 그 바로 오른쪽(groundX + 1000)에 두 장을 이어 붙여서 그림!
             ctx.drawImage(images.ground, groundX, 604, 1000, 440); 
             ctx.drawImage(images.ground, groundX + 1000, 604, 1000, 440); 
-
         } catch(e) {
             ctx.strokeStyle = '#444444'; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(0, GROUND_Y); ctx.lineTo(canvas.width, GROUND_Y); ctx.stroke();
         }
@@ -314,49 +326,42 @@ try {
         ctx.strokeStyle = '#444444'; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(0, GROUND_Y); ctx.lineTo(canvas.width, GROUND_Y); ctx.stroke();
     }
   
-  
-  
-    // ★ [수정] 쮸 실시간 눈 깜빡임 연산 처리 시스템
-  jjuBlinkTimer++;
+    // 5. 쮸 실시간 눈 깜빡임 타이머 연산
+    jjuBlinkTimer++;
     if (!isJjuBlinking && jjuBlinkTimer >= nextBlinkInterval) {
         isJjuBlinking = true;
         jjuBlinkTimer = 0;
     } else if (isJjuBlinking && jjuBlinkTimer >= 9) { 
         isJjuBlinking = false;
         jjuBlinkTimer = 0;
-        
-        // ★ 이 부분을 기존 120 + ... 에서 50 + ... 으로 수정! ★
-        // 숫자를 줄여서 다음 깜빡임이 대략 1초 ~ 2초 사이에 엄청 자주 돌아오도록 버프!
         nextBlinkInterval = 50 + Math.floor(Math.random() * 60); 
     }
 
-    // [배경 데코] 달 (쮸 얼굴 후광 및 실시간 깜빡임 적용)
-ctx.save(); 
+    // 6. 둥실둥실 달 (쮸 얼굴 후광 효과)
+    ctx.save(); 
     glowTimer += 0.05; 
-    ctx.shadowBlur = 60 + Math.sin(glowTimer) * 20; 
+    ctx.shadowBlur = 90 + Math.sin(glowTimer) * 50; 
     ctx.shadowColor = "rgba(255, 235, 170, 0.85)";
 
-    // ★ [수정] Y축 위치(두 번째 숫자)에 Math.sin을 주어 위아래로 ±15px만큼 둥실둥실 움직이게 연동!
     let jjuY = 80 + Math.sin(glowTimer * 0.8) * 15; 
 
     if (isJjuBlinking && imagesLoaded['moon_blink'] && images.moon_blink.complete) {
-        // [수정] Y축 위치 자리에 고정 숫자 대신 방금 만든 jjuY 변수를 쏙 넣어줌!
         ctx.drawImage(images.moon_blink, canvas.width - 450, jjuY, 350, 350);
     } else if (imagesLoaded['moon'] && images.moon && images.moon.complete) {
-        // [수정] 여기도 jjuY로 교체!
-        ctx.drawImage(images.moon, canvas.width -450, jjuY, 350, 350);
+        ctx.drawImage(images.moon, canvas.width - 450, jjuY, 350, 350);
     } else {
-        ctx.fillStyle = '#1a1a2e'; 
+        ctx.fillStyle = '#fefdca'; 
         ctx.fillRect(canvas.width - 450, jjuY, 350, 350);
     }
-    ctx.restore();
     ctx.restore(); 
 
-    ctx.fillStyle = '#ffffff'; ctx.font = 'bold 36px sans-serif'; ctx.fillText(`SCORE : ${score}`, 40, 65);
+    // 7. 점수판 및 호야 드로잉
+    ctx.fillStyle = '#ffffff'; ctx.font = 'bold 36px sans-serif'; ctx.fillText(`SCORE : ${score}`, 50, 65);
 
     character.update();
     character.draw();
 
+    // 8. 장애물 리젠 및 레드 아우라 체크
     spawnTimer++;
     if (spawnTimer >= nextSpawnInterval) {
         obstacles.push(new Obstacle());
@@ -374,7 +379,8 @@ ctx.save();
     });
 }
 
-animate();
+// 첫 게임 실행을 위해 초기화 작동
+resetGame();
 </script>
 
 </body>
