@@ -263,19 +263,19 @@ function animate() {
     
     // ★ [수정] 타이머를 계속 증가시키고, Math.sin을 써서 30px ~ 60px 사이를 부드럽게 왔다갔다 하게 만듦!
     glowTimer += 0.05; // 이 숫자를 키우면 커졌다 작아졌다 하는 속도가 빨라짐!
-    ctx.shadowBlur = 60 + Math.sin(glowTimer) * 20; // 기본 45 크기에서 ±15 만큼 계속 커졌다 작아졌다 함!
+    ctx.shadowBlur = 60 + Math.sin(glowTimer) * 30; // 기본 45 크기에서 ±15 만큼 계속 커졌다 작아졌다 함!
     
     ctx.shadowColor = "rgba(255, 235, 170, 0.85)";
 
     // 상황별 이미지 스위칭 그리기
     if (isJjuBlinking && imagesLoaded['moon_blink'] && images.moon_blink.complete) {
         // 눈 감았을 때
-        ctx.drawImage(images.moon_blink, canvas.width - 330, 100, 250, 250);
+        ctx.drawImage(images.moon_blink, canvas.width - 350, 100, 260, 260);
     } else if (imagesLoaded['moon'] && images.moon && images.moon.complete && images.moon.naturalWidth > 0) {
         // 평소 눈 뜨고 있을 때
-        ctx.drawImage(images.moon, canvas.width - 330, 100, 250, 250);
+        ctx.drawImage(images.moon, canvas.width - 350, 100, 260, 260);
     } else {
-        ctx.fillStyle = '#fefdca'; ctx.fillRect(canvas.width - 330, 100, 250, 250);
+        ctx.fillStyle = '#fefdca'; ctx.fillRect(canvas.width - 350, 100, 260, 260);
     }
     ctx.restore(); 
 
