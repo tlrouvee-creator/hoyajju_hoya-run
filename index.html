@@ -207,14 +207,14 @@ function animate() {
     // [배경 데코] 달 (호야 여친 얼굴용 200% 거대화 및 위치 조정 완료!)
     // 크기를 200x200으로 키우고 위치를 아래(y:140), 왼쪽(canvas.width - 260)으로 당김!
     if (imagesLoaded['moon'] && images.moon && images.moon.complete && images.moon.naturalWidth > 0) {
-        ctx.drawImage(images.moon, canvas.width - 260, 140, 200, 200);
+        ctx.drawImage(images.moon, canvas.width - 280, 140, 200, 200);
     } else {
         ctx.fillStyle = '#fefdca'; ctx.fillRect(canvas.width - 260, 140, 160, 160);
     }
 
     // [구름 시스템 - 간격 조절 반영]
     // 구름이 너무 자주 젠되지 않도록 타이머 모듈러 값을 120 -> 220으로 대폭 상향 (여유롭게 나옴)
-    if (spawnTimer % 220 === 0) { clouds.push(new Cloud()); }
+    if (spawnTimer % 300 === 0) { clouds.push(new Cloud()); }
     clouds.forEach((cloud, index) => {
         cloud.update(); cloud.draw();
         if (cloud.x + cloud.width < 0) clouds.splice(index, 1);
