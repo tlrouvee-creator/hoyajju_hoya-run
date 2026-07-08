@@ -26,8 +26,12 @@ let spawnTimer = 0;
 let nextSpawnInterval = 80; 
 const GROUND_Y = 800; 
 
+// ★ [수정] 구름 랜덤 간격을 제어하기 위한 독립 타이머 변수 추가
+let cloudTimer = 0;
+let nextCloudInterval = 200; 
+
 const IMAGES_SRC = {
-    character: 'hoya_run.png', 
+    character: 'https://github.com/tlrouvee-creator/hoyajju_hoya-run/blob/main/hoya_run.png?raw=true', 
     ground: 'ground.png',       
     moon: 'moon.png',           
     cloud: 'cloud.png',         
@@ -103,13 +107,13 @@ const character = {
     }
 };
 
-// 2. 배경 요소 (구름 사이즈 150% 스케일업 및 생성 범위 하향 완료)
 class Cloud {
     constructor() {
-        this.x = canvas.width + Math.random() * 300; // 생성 간격을 넓히기 위해 가로 범위 버프
-        this.y = 80 + Math.random() * 250;           // 상공 영역을 아래(중간쯤)까지 대폭 확장!
-        this.width = 180;                            // 기존 120에서 150% 키운 180!
-        this.height = 105;                           // 기존 70에서 150% 키운 105!
+        this.x = canvas.width + Math.random() * 300; 
+        // ★ [수정] 구름 높이를 하향 조정 (200px ~ 550px 사이의 화면 중간 영역에서 젠)
+        this.y = 200 + Math.random() * 350;           
+        this.width = 180;                            
+        this.height = 105;                           
         this.speed = gameSpeed * 0.3;
     }
     update() { this.x -= this.speed; }
@@ -183,6 +187,7 @@ canvas.addEventListener('touchstart', handleJump, { passive: false });
 
 function resetGame() {
     obstacles = []; clouds = []; score = 0; gameSpeed = 8; isGameOver = false; spawnTimer = 0; nextSpawnInterval = 80;
+    cloudTimer = 0; nextCloudInterval = 200; // 리셋 변수 추가
     character.y = GROUND_Y - character.height;
     animate();
 }
@@ -204,17 +209,22 @@ function animate() {
     requestAnimationFrame(animate);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // [배경 데코] 달 (호야 여친 얼굴용 200% 거대화 및 위치 조정 완료!)
-    // 크기를 200x200으로 키우고 위치를 아래(y:140), 왼쪽(canvas.width - 260)으로 당김!
+    // [배경 데코] 달 (호야 여친 얼굴용)
     if (imagesLoaded['moon'] && images.moon && images.moon.complete && images.moon.naturalWidth > 0) {
-        ctx.drawImage(images.moon, canvas.width - 260, 140, 200, 200);
+        ctx.drawImage(images.moon, canvas.width - 300, 140, 200, 200);
     } else {
-        ctx.fillStyle = '#fefdca'; ctx.fillRect(canvas.width - 260, 140, 160, 160);
+        ctx.fillStyle = '#fefdca'; ctx.fillRect(canvas.width - 300, 140, 200, 200);
     }
 
-    // [구름 시스템 - 간격 조절 반영]
-    // 구름이 너무 자주 젠되지 않도록 타이머 모듈러 값을 120 -> 220으로 대폭 상향 (여유롭게 나옴)
-    if (spawnTimer % 220 === 0) { clouds.push(new Cloud()); }
+    // ★ [수정] 기차놀이 겹침 방지용 랜덤 구름 리젠 시스템 시스템
+    cloudTimer++;
+    if (cloudTimer >= nextCloudInterval) {
+        clouds.push(new Cloud());
+        cloudTimer = 0;
+        // 다음 구름은 250프레임 ~ 550프레임 사이의 랜덤한 간격으로 생성되어 절대 안 겹침!
+        nextCloudInterval = 70 + Math.floor(Math.random() * 200); 
+    }
+
     clouds.forEach((cloud, index) => {
         cloud.update(); cloud.draw();
         if (cloud.x + cloud.width < 0) clouds.splice(index, 1);
