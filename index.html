@@ -107,7 +107,7 @@ const character = {
 class Cloud {
     constructor() {
         this.x = canvas.width + Math.random() * 300; // 생성 간격을 넓히기 위해 가로 범위 버프
-        this.y = 80 + Math.random() * 250;           // 상공 영역을 아래(중간쯤)까지 대폭 확장!
+        this.y = 80 + Math.random() * 350;           // 상공 영역을 아래(중간쯤)까지 대폭 확장!
         this.width = 180;                            // 기존 120에서 150% 키운 180!
         this.height = 105;                           // 기존 70에서 150% 키운 105!
         this.speed = gameSpeed * 0.3;
@@ -207,7 +207,7 @@ function animate() {
     // [배경 데코] 달 (호야 여친 얼굴용 200% 거대화 및 위치 조정 완료!)
     // 크기를 200x200으로 키우고 위치를 아래(y:140), 왼쪽(canvas.width - 260)으로 당김!
     if (imagesLoaded['moon'] && images.moon && images.moon.complete && images.moon.naturalWidth > 0) {
-        ctx.drawImage(images.moon, canvas.width - 280, 140, 200, 200);
+        ctx.drawImage(images.moon, canvas.width - 300, 140, 200, 200);
     } else {
         ctx.fillStyle = '#fefdca'; ctx.fillRect(canvas.width - 260, 140, 160, 160);
     }
