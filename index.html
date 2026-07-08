@@ -84,9 +84,9 @@ x: 50,
                 return;
             } catch (e) {}
         }
-        ctx.fillStyle = '#ff007f'; 
+        ctx.fillStyle = '#1a1a2e'; 
         ctx.fillRect(this.x, this.y, this.width, this.height);
-        ctx.fillStyle = '#ffffff';
+        ctx.fillStyle = '#1a1a2e';
         ctx.fillRect(this.x + 150, this.y + 50, 32, 32);
     },
     update() {
@@ -116,7 +116,7 @@ x: 50,
 class Cloud {
     constructor() {
         this.x = canvas.width + Math.random() * 300; 
-        this.y = 200 + Math.random() * 350;           
+        this.y = 50 + Math.random() * 280;           
         this.width = 180;                            
         this.height = 105;                           
         this.speed = gameSpeed * 0.3;
@@ -258,25 +258,25 @@ function animate() {
     }
 
     // [배경 데코] 달 (쮸 얼굴 후광 및 실시간 깜빡임 적용)
- // [배경 데코] 달 (쮸 얼굴 후광 및 실시간 깜빡임 적용)
-    ctx.save(); 
-    
-    // ★ [수정] 타이머를 계속 증가시키고, Math.sin을 써서 30px ~ 60px 사이를 부드럽게 왔다갔다 하게 만듦!
-    glowTimer += 0.05; // 이 숫자를 키우면 커졌다 작아졌다 하는 속도가 빨라짐!
-    ctx.shadowBlur = 60 + Math.sin(glowTimer) * 30; // 기본 45 크기에서 ±15 만큼 계속 커졌다 작아졌다 함!
-    
+ctx.save(); 
+    glowTimer += 0.05; 
+    ctx.shadowBlur = 60 + Math.sin(glowTimer) * 20; 
     ctx.shadowColor = "rgba(255, 235, 170, 0.85)";
 
-    // 상황별 이미지 스위칭 그리기
+    // ★ [수정] Y축 위치(두 번째 숫자)에 Math.sin을 주어 위아래로 ±15px만큼 둥실둥실 움직이게 연동!
+    let jjuY = 80 + Math.sin(glowTimer * 0.8) * 15; 
+
     if (isJjuBlinking && imagesLoaded['moon_blink'] && images.moon_blink.complete) {
-        // 눈 감았을 때
-        ctx.drawImage(images.moon_blink, canvas.width - 350, 100, 260, 260);
-    } else if (imagesLoaded['moon'] && images.moon && images.moon.complete && images.moon.naturalWidth > 0) {
-        // 평소 눈 뜨고 있을 때
-        ctx.drawImage(images.moon, canvas.width - 350, 100, 260, 260);
+        // [수정] Y축 위치 자리에 고정 숫자 대신 방금 만든 jjuY 변수를 쏙 넣어줌!
+        ctx.drawImage(images.moon_blink, canvas.width - 380, jjuY, 280, 280);
+    } else if (imagesLoaded['moon'] && images.moon && images.moon.complete) {
+        // [수정] 여기도 jjuY로 교체!
+        ctx.drawImage(images.moon, canvas.width - 380, jjuY, 280, 280);
     } else {
-        ctx.fillStyle = '#fefdca'; ctx.fillRect(canvas.width - 350, 100, 260, 260);
+        ctx.fillStyle = '#1a1a2e'; 
+        ctx.fillRect(canvas.width - 380, jjuY, 280, 280);
     }
+    ctx.restore();
     ctx.restore(); 
 
     ctx.fillStyle = '#ffffff'; ctx.font = 'bold 36px sans-serif'; ctx.fillText(`SCORE : ${score}`, 40, 65);
