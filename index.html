@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>HOYAJJU-runrun!Hoya!</title>
+    <style>
+        body { margin: 0; padding: 0; background-color: #222222; overflow: hidden; display: flex; justify-content: center; align-items: center; height: 100vh; font-family: 'Arial', sans-serif; }
+        canvas { background-color: #1a1a2e; box-shadow: 0 0 30px rgba(0,0,0,0.6); max-width: 100%; max-height: 100%; }
+    </style>
+</head>
+<body>
+
+<canvas id="gameCanvas"></canvas>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+canvas.width = 1000;
+canvas.height = 1000;
+
+let score = 0;
+let isGameOver = false;
+let gameSpeed = 8;
+let spawnTimer = 0;
+let nextSpawnInterval = 80; 
+const GROUND_Y = 800; 
+
+const IMAGES_SRC = {
+    character: 'hoya_run.png', 
+    ground: 'ground.png',       
+    moon: 'moon.png',           
+    cloud: 'cloud.png',         
+    rock: 'rock.png',           
+    drawer: 'drawer.png',       
+    pot: 'pot.png',             
+    flower: 'flower.png'        
+};
+
+const images = {};
+const imagesLoaded = {};
+
+try {
+    Object.keys(IMAGES_SRC).forEach(key => {
+        imagesLoaded[key] = false;
+        images[key] = new Image();
+        images[key].src = IMAGES_SRC[key];
+        images[key].onload = () => { imagesLoaded[key] = true; };
+        images[key].onerror = () => { imagesLoaded[key] = false; };
+    });
+} catch(e) {}
+
+const character = {
+    x: 120,               
+    y: GROUND_Y - 240,    
+    width: 220,           
+    height: 240,          
+    gravity: 0.9,         
+    jumpForce: -23,       
+    velocityY: 0,
+    isJumping: false,
+    frameCount: 6,        
+    currentFrame: 0,    
+    animTimer: 0,       
+    animSpeed: 4,         
+    
+    draw() {
+        if (imagesLoaded['character'] && images.character && images.character.complete && images.character.naturalWidth > 0) {
+            try {
+                let frameWidth = images.character.naturalWidth / this.frameCount;
+                let frameHeight = images.character.naturalHeight;
+                let sourceX = this.isJumping ? 0 : this.currentFrame * frameWidth;
+                ctx.drawImage(images.character, sourceX, 0, frameWidth, frameHeight, this.x, this.y, this.width, this.height);
+                return;
+            } catch (e) {}
+        }
+        ctx.fillStyle = '#ff007f'; 
+        ctx.fillRect(this.x, this.y, this.width, this.height);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(this.x + 150, this.y + 50, 32, 32);
+    },
+    update() {
+        this.velocityY += this.gravity;
+        this.y += this.velocityY;
+        if (this.y > GROUND_Y - this.height) {
+            this.y = GROUND_Y - this.height;
+            this.velocityY = 0;
+            this.isJumping = false;
+        }
+        if (!this.isJumping && !isGameOver) {
+            this.animTimer++;
+            if (this.animTimer >= this.animSpeed) {
+                this.currentFrame = (this.currentFrame + 1) % this.frameCount;
+                this.animTimer = 0;
+            }
+        }
+    },
+    jump() {
+        if (!this.isJumping) {
+            this.velocityY = this.jumpForce;
+            this.isJumping = true;
+        }
+    }
+};
+
+// 2. 배경 요소 (구름 사이즈 150% 스케일업 및 생성 범위 하향 완료)
+class Cloud {
+    constructor() {
+        this.x = canvas.width + Math.random() * 300; // 생성 간격을 넓히기 위해 가로 범위 버프
+        this.y = 80 + Math.random() * 250;           // 상공 영역을 아래(중간쯤)까지 대폭 확장!
+        this.width = 180;                            // 기존 120에서 150% 키운 180!
+        this.height = 105;                           // 기존 70에서 150% 키운 105!
+        this.speed = gameSpeed * 0.3;
+    }
+    update() { this.x -= this.speed; }
+    draw() {
+        if (imagesLoaded['cloud'] && images.cloud && images.cloud.complete && images.cloud.naturalWidth > 0) {
+            try {
+                ctx.drawImage(images.cloud, this.x, this.y, this.width, this.height);
+                return;
+            } catch(e){}
+        }
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+        ctx.fillRect(this.x, this.y, this.width, this.height);
+    }
+}
+
+const OBSTACLE_TYPES = ['rock', 'drawer', 'pot', 'flower'];
+
+class Obstacle {
+    constructor() {
+        this.x = canvas.width;
+        this.type = OBSTACLE_TYPES[Math.floor(Math.random() * OBSTACLE_TYPES.length)];
+        if (this.type === 'rock') { this.width = 80; this.height = 80; }
+        else if (this.type === 'drawer') { this.width = 70; this.height = 120; }
+        else if (this.type === 'pot') { this.width = 60; this.height = 90; }
+        else if (this.type === 'flower') { this.width = 50; this.height = 100; }
+        this.y = GROUND_Y - this.height; 
+    }
+    update() { this.x -= gameSpeed; }
+    draw() {
+        if (imagesLoaded[this.type] && images[this.type] && images[this.type].complete && images[this.type].naturalWidth > 0) {
+            try {
+                ctx.drawImage(images[this.type], this.x, this.y, this.width, this.height);
+                return;
+            } catch(e){}
+        }
+        if (this.type === 'rock') ctx.fillStyle = '#707075';
+        else if (this.type === 'drawer') ctx.fillStyle = '#8b5a2b';
+        else if (this.type === 'pot') ctx.fillStyle = '#d2691e';
+        else if (this.type === 'flower') ctx.fillStyle = '#ffa500';
+        ctx.fillRect(this.x, this.y, this.width, this.height);
+    }
+}
+
+let obstacles = [];
+let clouds = [];
+
+function checkCollision(char, obs) {
+    let charBoxX = char.x + 60;
+    let charBoxY = char.y + 70;
+    let charBoxW = 100;
+    let charBoxH = 120;
+
+    let obsBoxX = obs.x + 10;
+    let obsBoxY = obs.y + 10;
+    let obsBoxW = obs.width - 20;
+    let obsBoxH = obs.height - 20;
+
+    return charBoxX < obsBoxX + obsBoxW &&
+           charBoxX + charBoxW > obsBoxX &&
+           charBoxY < obsBoxY + obsBoxH &&
+           charBoxY + charBoxH > obsBoxY;
+}
+
+function handleJump(e) {
+    if (e) e.preventDefault();
+    if (isGameOver) { resetGame(); } else { character.jump(); }
+}
+
+window.addEventListener('keydown', (e) => { if(e.code === 'Space') handleJump(e); });
+canvas.addEventListener('touchstart', handleJump, { passive: false });
+
+function resetGame() {
+    obstacles = []; clouds = []; score = 0; gameSpeed = 8; isGameOver = false; spawnTimer = 0; nextSpawnInterval = 80;
+    character.y = GROUND_Y - character.height;
+    animate();
+}
+
+function calculateNextInterval() {
+    let baseMin = Math.max(45, 85 - Math.floor(gameSpeed * 3));
+    let baseMax = Math.max(90, 160 - Math.floor(gameSpeed * 4));
+    return baseMin + Math.floor(Math.random() * (baseMax - baseMin));
+}
+
+function animate() {
+    if (isGameOver) {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#ffffff'; ctx.font = 'bold 64px sans-serif'; ctx.fillText('GAME OVER', canvas.width/2 - 190, canvas.height/2 - 20);
+        ctx.fillStyle = '#ff007f'; ctx.font = '32px sans-serif'; ctx.fillText('화면을 터치하면 다시 시작!', canvas.width/2 - 210, canvas.height/2 + 60);
+        return;
+    }
+
+    requestAnimationFrame(animate);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // [배경 데코] 달 (호야 여친 얼굴용 200% 거대화 및 위치 조정 완료!)
+    // 크기를 200x200으로 키우고 위치를 아래(y:140), 왼쪽(canvas.width - 260)으로 당김!
+    if (imagesLoaded['moon'] && images.moon && images.moon.complete && images.moon.naturalWidth > 0) {
+        ctx.drawImage(images.moon, canvas.width - 260, 140, 200, 200);
+    } else {
+        ctx.fillStyle = '#fefdca'; ctx.fillRect(canvas.width - 260, 140, 160, 160);
+    }
+
+    // [구름 시스템 - 간격 조절 반영]
+    // 구름이 너무 자주 젠되지 않도록 타이머 모듈러 값을 120 -> 220으로 대폭 상향 (여유롭게 나옴)
+    if (spawnTimer % 220 === 0) { clouds.push(new Cloud()); }
+    clouds.forEach((cloud, index) => {
+        cloud.update(); cloud.draw();
+        if (cloud.x + cloud.width < 0) clouds.splice(index, 1);
+    });
+
+    if (imagesLoaded['ground'] && images.ground && images.ground.complete && images.ground.naturalWidth > 0) {
+        for (let i = 0; i < canvas.width; i += 100) { imagesLoaded['ground'] && ctx.drawImage(images.ground, i, GROUND_Y, 100, 30); }
+    } else {
+        ctx.strokeStyle = '#444444'; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(0, GROUND_Y); ctx.lineTo(canvas.width, GROUND_Y); ctx.stroke();
+    }
+
+    ctx.fillStyle = '#ffffff'; ctx.font = 'bold 36px sans-serif'; ctx.fillText(`SCORE : ${score}`, 40, 65);
+
+    character.update();
+    character.draw();
+
+    spawnTimer++;
+    if (spawnTimer >= nextSpawnInterval) {
+        obstacles.push(new Obstacle());
+        spawnTimer = 0;
+        nextSpawnInterval = calculateNextInterval();
+    }
+
+    obstacles.forEach((obs, index) => {
+        obs.update(); obs.draw();
+        if (obs.x + obs.width < 0) {
+            obstacles.splice(index, 1); score += 10;
+            if (score % 50 === 0 && score > 0) { gameSpeed += 0.8; }
+        }
+        if (checkCollision(character, obs)) { isGameOver = true; }
+    });
+}
+
+animate();
+</script>
+
+</body>
+</html>
