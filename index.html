@@ -26,6 +26,10 @@ let spawnTimer = 0;
 let nextSpawnInterval = 80; 
 const GROUND_Y = 800; 
 
+// ★ [수정] 구름 랜덤 간격을 제어하기 위한 독립 타이머 변수 추가
+let cloudTimer = 0;
+let nextCloudInterval = 200; 
+
 const IMAGES_SRC = {
     character: 'hoya_run.png', 
     ground: 'ground.png',       
@@ -103,13 +107,13 @@ const character = {
     }
 };
 
-// 2. 배경 요소 (구름 사이즈 150% 스케일업 및 생성 범위 하향 완료)
 class Cloud {
     constructor() {
-        this.x = canvas.width + Math.random() * 300; // 생성 간격을 넓히기 위해 가로 범위 버프
-        this.y = 80 + Math.random() * 350;           // 상공 영역을 아래(중간쯤)까지 대폭 확장!
-        this.width = 180;                            // 기존 120에서 150% 키운 180!
-        this.height = 105;                           // 기존 70에서 150% 키운 105!
+        this.x = canvas.width + Math.random() * 300; 
+        // ★ [수정] 구름 높이를 하향 조정 (200px ~ 550px 사이의 화면 중간 영역에서 젠)
+        this.y = 200 + Math.random() * 350;           
+        this.width = 180;                            
+        this.height = 105;                           
         this.speed = gameSpeed * 0.3;
     }
     update() { this.x -= this.speed; }
@@ -134,122 +138,3 @@ class Obstacle {
         if (this.type === 'rock') { this.width = 80; this.height = 80; }
         else if (this.type === 'drawer') { this.width = 70; this.height = 120; }
         else if (this.type === 'pot') { this.width = 60; this.height = 90; }
-        else if (this.type === 'flower') { this.width = 50; this.height = 100; }
-        this.y = GROUND_Y - this.height; 
-    }
-    update() { this.x -= gameSpeed; }
-    draw() {
-        if (imagesLoaded[this.type] && images[this.type] && images[this.type].complete && images[this.type].naturalWidth > 0) {
-            try {
-                ctx.drawImage(images[this.type], this.x, this.y, this.width, this.height);
-                return;
-            } catch(e){}
-        }
-        if (this.type === 'rock') ctx.fillStyle = '#707075';
-        else if (this.type === 'drawer') ctx.fillStyle = '#8b5a2b';
-        else if (this.type === 'pot') ctx.fillStyle = '#d2691e';
-        else if (this.type === 'flower') ctx.fillStyle = '#ffa500';
-        ctx.fillRect(this.x, this.y, this.width, this.height);
-    }
-}
-
-let obstacles = [];
-let clouds = [];
-
-function checkCollision(char, obs) {
-    let charBoxX = char.x + 60;
-    let charBoxY = char.y + 70;
-    let charBoxW = 100;
-    let charBoxH = 120;
-
-    let obsBoxX = obs.x + 10;
-    let obsBoxY = obs.y + 10;
-    let obsBoxW = obs.width - 20;
-    let obsBoxH = obs.height - 20;
-
-    return charBoxX < obsBoxX + obsBoxW &&
-           charBoxX + charBoxW > obsBoxX &&
-           charBoxY < obsBoxY + obsBoxH &&
-           charBoxY + charBoxH > obsBoxY;
-}
-
-function handleJump(e) {
-    if (e) e.preventDefault();
-    if (isGameOver) { resetGame(); } else { character.jump(); }
-}
-
-window.addEventListener('keydown', (e) => { if(e.code === 'Space') handleJump(e); });
-canvas.addEventListener('touchstart', handleJump, { passive: false });
-
-function resetGame() {
-    obstacles = []; clouds = []; score = 0; gameSpeed = 8; isGameOver = false; spawnTimer = 0; nextSpawnInterval = 80;
-    character.y = GROUND_Y - character.height;
-    animate();
-}
-
-function calculateNextInterval() {
-    let baseMin = Math.max(45, 85 - Math.floor(gameSpeed * 3));
-    let baseMax = Math.max(90, 160 - Math.floor(gameSpeed * 4));
-    return baseMin + Math.floor(Math.random() * (baseMax - baseMin));
-}
-
-function animate() {
-    if (isGameOver) {
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)'; ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = '#ffffff'; ctx.font = 'bold 64px sans-serif'; ctx.fillText('GAME OVER', canvas.width/2 - 190, canvas.height/2 - 20);
-        ctx.fillStyle = '#ff007f'; ctx.font = '32px sans-serif'; ctx.fillText('화면을 터치하면 다시 시작!', canvas.width/2 - 210, canvas.height/2 + 60);
-        return;
-    }
-
-    requestAnimationFrame(animate);
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    // [배경 데코] 달 (호야 여친 얼굴용 200% 거대화 및 위치 조정 완료!)
-    // 크기를 200x200으로 키우고 위치를 아래(y:140), 왼쪽(canvas.width - 260)으로 당김!
-    if (imagesLoaded['moon'] && images.moon && images.moon.complete && images.moon.naturalWidth > 0) {
-        ctx.drawImage(images.moon, canvas.width - 300, 140, 200, 200);
-    } else {
-        ctx.fillStyle = '#fefdca'; ctx.fillRect(canvas.width - 260, 140, 160, 160);
-    }
-
-    // [구름 시스템 - 간격 조절 반영]
-    // 구름이 너무 자주 젠되지 않도록 타이머 모듈러 값을 120 -> 220으로 대폭 상향 (여유롭게 나옴)
-    if (spawnTimer % 300 === 0) { clouds.push(new Cloud()); }
-    clouds.forEach((cloud, index) => {
-        cloud.update(); cloud.draw();
-        if (cloud.x + cloud.width < 0) clouds.splice(index, 1);
-    });
-
-    if (imagesLoaded['ground'] && images.ground && images.ground.complete && images.ground.naturalWidth > 0) {
-        for (let i = 0; i < canvas.width; i += 100) { imagesLoaded['ground'] && ctx.drawImage(images.ground, i, GROUND_Y, 100, 30); }
-    } else {
-        ctx.strokeStyle = '#444444'; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(0, GROUND_Y); ctx.lineTo(canvas.width, GROUND_Y); ctx.stroke();
-    }
-
-    ctx.fillStyle = '#ffffff'; ctx.font = 'bold 36px sans-serif'; ctx.fillText(`SCORE : ${score}`, 40, 65);
-
-    character.update();
-    character.draw();
-
-    spawnTimer++;
-    if (spawnTimer >= nextSpawnInterval) {
-        obstacles.push(new Obstacle());
-        spawnTimer = 0;
-        nextSpawnInterval = calculateNextInterval();
-    }
-
-    obstacles.forEach((obs, index) => {
-        obs.update(); obs.draw();
-        if (obs.x + obs.width < 0) {
-            obstacles.splice(index, 1); score += 10;
-            if (score % 50 === 0 && score > 0) { gameSpeed += 0.8; }
-        }
-        if (checkCollision(character, obs)) { isGameOver = true; }
-    });
-}
-
-animate();
-</script>
-
-</body>
-</html>
